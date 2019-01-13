@@ -2,7 +2,12 @@
 #ifndef MATCHANDGROUP_H
 #define MATCHANDGROUP_H
 
-#include "configure.h"
+#include <math.h>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
+#include "contourfeature.h"
+
+using namespace cv;
 
 bool Rect_different(const RotatedRect &r1, const RotatedRect &r2)
 {
@@ -37,32 +42,20 @@ bool Rect_different(const RotatedRect &r1, const RotatedRect &r2)
     float distance = sqrt(pow(x1-x2,2)+pow(y1-y2,2));
     float w = abs(w1-w2);
     float h = abs(h1-h2);
-    float Low = 0.f;
-    float High = 0.f;
     if(slope<0.5)
     {
-        if(armor_color == 0)
-        {
-            Low = max(w1,w2)*4.110;
-            High = max(w1,w2)*24.888;
-        }
-        else
-        {
-            Low = max(w1,w2)*4.110;
-            High = max(w1,w2)*24.888;
-        }
-        if(Low < distance&& distance < High)
+        if((distance > max(w1,w2)*4.111) && (distance < max(w1,w2)*24.888))
         {
             if(h>w)
             {
                 float ratio = h/max(h1,h2);
-                if(ratio < 0.3005)
+                if(ratio < 0.300)
                     is = 1;
             }
             else
             {
                 float ratio = w/max(w1,w2);
-                if(ratio < 0.3005)
+                if(ratio < 0.300)
                     is = 1;
             }
         }
@@ -146,7 +139,7 @@ bool Distance_Height(RotatedRect R_rect_1, RotatedRect R_rect_2)
     {
         h = h2;
     }
-    if((distence > h && distence < h*8))
+    if((distence > h) && (distence < h*8))
     {
         is = 1;
     }

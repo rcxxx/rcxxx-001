@@ -2,9 +2,13 @@
 #ifndef CONTOURFEATURE_H
 #define CONTOURFEATURE_H
 
-#include "configure.h"
+#include <math.h>
+#include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 
-bool Test_Armored_Color(Mat color_roi)
+using namespace cv;
+
+bool Test_Armored_Color(Mat color_roi,int Armor_Color)
 {
     Mat hsv_roi;
     cvtColor(color_roi,hsv_roi,COLOR_BGR2HSV);
@@ -12,52 +16,40 @@ bool Test_Armored_Color(Mat color_roi)
     double H=0.0,S=0.0,V=0.0;
     int x,y;
     int flag = 0;
-    for(x = color_roi.cols/4;x < color_roi.cols/4+color_roi.cols/2; ++x)
+    for(x = 0;x < color_roi.cols; ++x)
     {
-        for(y = color_roi.rows/4;y < color_roi.rows/4+color_roi.rows/2; ++y)
+        for(y = 0;y < color_roi.rows; ++y)
         {
             H = hsv_roi.at<Vec3b>(y,x)[0];
             S = hsv_roi.at<Vec3b>(y,x)[1];
             V = hsv_roi.at<Vec3b>(y,x)[2];
             //red
-            if(armor_color == 0)
+            if(Armor_Color == 0)
             {
                 if((H>=145 && H<180)||(H>=0 && H<=13))
                 {   if(S >= 135 && S <= 255)
                     {   if(V > 148 && V <= 255)
-                        {
-                            flag += 1;
+                        {   is_color = 1;
+                            continue;
                         }
                     }
                 }
             }
             else
             {   //blue
-                if(H>=75 && H<=155)
+                if(H>=75 && H<120)
                 {   if(S >= 195 && S <= 255)
-                    {   if(V >= 185 && V <= 255)
+                    {   if(V > 185 && V <= 255)
                         {
-                            flag += 1;
+                            flag +=1;
                         }
                     }
                 }
             }
-
-            if(armor_color == 0)
-            {
-                if((flag / color_roi.cols*color_roi.rows) > 0.5)
-                {
-                    is_color = 1;
-                    continue;
-                }
-            }
-            else
-            {
-                if((flag / color_roi.cols*color_roi.rows) > 0.5)
-                {
-                    is_color = 1;
-                    continue;
-                }
+            if((flag / color_roi.cols * color_roi.rows) > 0.5)
+             {
+                is_color = 1;
+                continue;
             }
         }
     }
@@ -70,7 +62,7 @@ float CenterDistance(Point p1,Point p2)
     return D;
 }
 
-int Light_State(const RotatedRect &rect)
+int Light_State(RotatedRect rect)
 {
     int w;
     int h;
@@ -108,42 +100,7 @@ int Light_State(const RotatedRect &rect)
     }
 }
 
-bool Catch_State(float ratio,int value)
-{
-    bool is;
-    switch (value)
-    {
-    case 1:
-        if (ratio < 0.7)
-            is = true;
-        else
-            is = false;
-        break;
-    case 2:
-        if (ratio < 0.8)
-            is = true;
-        else
-            is = false;
-        break;
-    case 3:
-        if (ratio < 0.9)
-            is = true;
-        else
-            is = false;
-        break;
-    case 4:
-        if (ratio < 1)
-            is = true;
-        else
-            is = false;
-        break;
-    default:
-        break;
-    }
-    return is;
-}
-
-void getROI(Mat src,const RotatedRect &rect, Mat roi)
+void getROI(Mat src, RotatedRect rect, Mat roi)
 {
     Point2f verices[4];
     Point2f verdst[4];
@@ -173,5 +130,4 @@ void getROI(Mat src,const RotatedRect &rect, Mat roi)
     Mat warpMatrix = getPerspectiveTransform(verices,verdst);
     warpPerspective(src,roi,warpMatrix,roi.size(),INTER_LINEAR, BORDER_CONSTANT);
 }
-
 #endif // CONTOURFEATURE_H

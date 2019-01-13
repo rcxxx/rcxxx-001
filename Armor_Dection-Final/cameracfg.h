@@ -22,9 +22,9 @@ BOOL                    AEstate=FALSE;
 
 bool                    cameraisopen = 0;
 
-void CameraSet()
+void CameraSet(int _cameramode)
 {
-    switch (cameramode)
+    switch (_cameramode)
     {
     case 0:
         CameraSdkInit(1);
@@ -48,16 +48,17 @@ void CameraSet()
         //获得相机的特性描述结构体。该结构体中包含了相机可设置的各种参数的范围信息。决定了相关函数的参数
         CameraGetCapability(hCamera,&tCapability);
         g_pRgbBuffer = (unsigned char*)malloc(tCapability.sResolutionRange.iHeightMax*tCapability.sResolutionRange.iWidthMax*3);
+        //cout<<AEstate;
+    //    //debug
         std::cout<<CameraGetAeState(hCamera,&AEstate);
         std::cout<<CameraSetAeState(hCamera,FALSE);
-        if(armor_color == 0)
-        {
-            CameraSetExposureTime(hCamera,350);
-        }
-        else
-        {
-            CameraSetExposureTime(hCamera,150);
-        }
+        CameraSetExposureTime(hCamera,350);
+    //    CameraSetExposureTime(hCamera,1.0);
+    //    double* pfExposureTime;
+    //    CameraGetExposureTime(hCamera,pfExposureTime);
+    //    cout<<"ExposureTime"<<pfExposureTime<<endl;
+    //    //debug
+
         /*让SDK进入工作模式，开始接收来自相机发送的图像数据。
          *如果当前相机是触发模式，则需要接收到触发帧以后才会更新图像*/
         CameraPlay(hCamera);

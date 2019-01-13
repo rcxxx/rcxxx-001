@@ -1,14 +1,20 @@
-#include "cameraconfigure.h"
+#include <iostream>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/opencv.hpp>
+
+#include "cameracfg.h"
 #include "configure.h"
 #include "contourfeature.h"
 #include "myserial.h"
+#include "CameraApi.h"
 #include "matchandgroup.h"
-#include "databuff.h"
 
 using namespace cv;
 using namespace std;
 
-int threshold_Value;
+int threshold_Value,Armor_olor;
 int t1, t2, t3, FPS;
 float RunTime;     //用于测试帧率
 Mat src_img;    //原图
@@ -18,44 +24,41 @@ Mat dst_img;    //输出图
 
 int main()
 {
-    cameraconfigure camera;
     /*----------调用相机----------*/
-    camera.CameraSet();
+    CameraSet(cameramode);
     /*----------调用相机----------*/
 
     /*----------串口部分----------*/
-    if(serialisopen == 1)
-    {
-        serialSet();//串口初始化函数
-    }
+    serialSet();//串口初始化函数
     /*----------串口部分----------*/
 
     /*----------参数初始化----------*/
     if(armor_color == 0)
     {
         threshold_Value = 20;
+        Armor_olor = 0;
     }
     else
     {
         threshold_Value = 40;
+        Armor_olor = 1;
     }
-    int SendBuf_COUNT = 0;    //ifSendSuccess
     /*----------参数初始化----------*/
     //----------识别部分----------
     for(;;)
     {
         t1 = getTickCount();
-        if(CameraGetImageBuffer(camera.hCamera,&camera.sFrameInfo,&camera.pbyBuffer,1000) == CAMERA_STATUS_SUCCESS)
+        if(CameraGetImageBuffer(hCamera,&sFrameInfo,&pbyBuffer,1000) == CAMERA_STATUS_SUCCESS)
         {
             //----------读取原图----------//
-            CameraImageProcess(camera.hCamera, camera.pbyBuffer, camera.g_pRgbBuffer,&camera.sFrameInfo);
-            if (camera.iplImage)
+            CameraImageProcess(hCamera, pbyBuffer, g_pRgbBuffer,&sFrameInfo);
+            if (iplImage)
             {
-                cvReleaseImageHeader(&camera.iplImage);
+                cvReleaseImageHeader(&iplImage);
             }
-            camera.iplImage = cvCreateImageHeader(cvSize(camera.sFrameInfo.iWidth,camera.sFrameInfo.iHeight),IPL_DEPTH_8U,camera.channel);
-            cvSetData(camera.iplImage,camera.g_pRgbBuffer,camera.sFrameInfo.iWidth*camera.channel);//此处只是设置指针，无图像块数据拷贝，不需担心转换效率
-            src_img = cvarrToMat(camera.iplImage,true);//这里只是进行指针转换，将IplImage转换成Mat类型
+            iplImage = cvCreateImageHeader(cvSize(sFrameInfo.iWidth,sFrameInfo.iHeight),IPL_DEPTH_8U,channel);
+            cvSetData(iplImage,g_pRgbBuffer,sFrameInfo.iWidth*channel);//此处只是设置指针，无图像块数据拷贝，不需担心转换效率
+            src_img = cvarrToMat(iplImage,true);//这里只是进行指针转换，将IplImage转换成Mat类型
             src_img.copyTo(dst_img);
 
             //--------------色彩分割	-----------------//
@@ -82,34 +85,59 @@ int main()
                 Rect B_rect_i = boundingRect(contours[i]);
                 RotatedRect R_rect_i = minAreaRect(contours[i]);
                 float ratio = (float)B_rect_i.width / (float)B_rect_i.height;
-                bool H_W = false;
+                bool H_W;
                 if(B_rect_i.height >= B_rect_i.width)
                 {
-                    H_W = Catch_State(ratio,Light_State(R_rect_i));
-                    if (H_W)
+                    switch (Light_State(R_rect_i))
                     {
-                        boundRect.push_back(B_rect_i);
-                        rotateRect.push_back(R_rect_i);
+                    case 1:
+                        if (ratio < 0.7)
+                            H_W = true;
+                        else
+                            H_W = false;
+                        break;
+                    case 2:
+                        if (ratio < 0.8)
+                            H_W = true;
+                        else
+                            H_W = false;
+                        break;
+                    case 3:
+                        if (ratio < 0.9)
+                            H_W = true;
+                        else
+                            H_W = false;
+                        break;
+                    case 4:
+                        if (ratio < 1)
+                            H_W = true;
+                        else
+                            H_W = false;
+                        break;
+                    default:
+                        break;
                     }
-                }                
+                }
+                if (H_W)
+                {
+                    boundRect.push_back(B_rect_i);
+                    rotateRect.push_back(R_rect_i);
+                }
             }
-            float distance_max = 0.f;
-            float slope_min = 10.0;
-            float ratio_maxW_distance_min = 0.f;
+            float distance_max = 0;
+
             //第二遍两个循环匹配灯条
-            for (int k1 = 0;k1<(int)rotateRect.size();++k1)
+            for (int k1 = 0;k1<(int)boundRect.size();++k1)
             {
-                if(rotateRect.size()<=1)
+                if(boundRect.size()<=1)
                     break;
-                for (int k2 = k1+1;k2<(int)rotateRect.size();++k2)
+                for (int k2 = k1+1;k2<(int)boundRect.size();++k2)
                 {
                     if(Light_filter(rotateRect[k1],rotateRect[k2]))
                     {
                         if(Rect_different(rotateRect[k1],rotateRect[k2]))
                         {
                             float distance_temp = CenterDistance(rotateRect[k1].center,rotateRect[k2].center);
-                            float slope_temp = fabs((rotateRect[k1].center.y-rotateRect[k2].center.y)/(rotateRect[k1].center.x-rotateRect[k2].center.x));
-                            float ratio_maxW_distance_temp = max(rotateRect[k1].size.width,rotateRect[k2].size.width) / distance_temp;
                             if (Distance_Height(rotateRect[k1],rotateRect[k2]))
                             {
                                 //ROI_1
@@ -168,21 +196,14 @@ int main()
                                 Mat roi_2 = Mat(roi_h2,roi_w2,CV_8UC1);
                                 Mat warpMatrix2 = getPerspectiveTransform(verices_2,verdst_2);
                                 warpPerspective(dst_img,roi_2,warpMatrix2,roi_2.size(),INTER_LINEAR, BORDER_CONSTANT);
-                                if(Test_Armored_Color(roi_1)==1)
+                                if(Test_Armored_Color(roi_1,Armor_olor)==1)
                                 {
-                                    if(Test_Armored_Color(roi_2)==1)
+                                    if(Test_Armored_Color(roi_2,Armor_olor)==1)
                                     {
-                                        if(distance_temp >= distance_max)
+                                        distance_temp = CenterDistance(rotateRect[k1].center,rotateRect[k2].center);
+                                        if(distance_temp > distance_max)
                                         {
                                             distance_max = distance_temp;
-                                        }
-                                        if(slope_temp <=slope_min )
-                                        {
-                                            slope_min = slope_temp;
-                                        }
-                                        if(ratio_maxW_distance_temp <= ratio_maxW_distance_min )
-                                        {
-                                            ratio_maxW_distance_min = ratio_maxW_distance_temp;
                                         }
 
                                         //imshow("roi",roi_1);
@@ -201,19 +222,14 @@ int main()
                     }
                 }
             }
-            bool SuccessSend = false;
-            int Recoginition_FLAG = 0;    //ifRecoginitionSuccess
-            int X_Widht;
-            int Y_height;
-
             //第三遍求最优灯条
             for (int k3 = 0;k3<(int)midPoint_pair.size();++k3)
             {
                 float distance = CenterDistance(midPoint_pair[k3][0],midPoint_pair[k3][1]);
                 float slope = fabs((midPoint_pair[k3][0].y-midPoint_pair[k3][1].y)/(midPoint_pair[k3][0].x-midPoint_pair[k3][1].x));
-                if(distance >= distance_max)//|| slope <= slope_min)
+                if(distance >= distance_max)
                 {
-                    if(slope <= 0.26)
+                    if(slope <= 0.5)
                     {
                         line(dst_img,midPoint_pair[k3][0],midPoint_pair[k3][1],Scalar(0,0,255),2,8);
                         int x1 = midPoint_pair[k3][0].x;
@@ -222,110 +238,41 @@ int main()
                         int y2 = midPoint_pair[k3][1].y;
                         Point mid_point = Point(int((x1 + x2)/2), int((y1 + y2)/2));
                         //cout<<"x:"<<mid_point.x<<"   y:"<<mid_point.y;
-                        X_Widht = mid_point.x;
-                        Y_height = mid_point.y;
-                        sprintf(buf_temp,"%s%03d%s%03d","S",X_Widht,",",Y_height);
-                        Recoginition_FLAG = 2;
-                        if(isCentralBUffer(src_img,mid_point))
+
+                        //DEBUG
+                        int X_Widht = mid_point.x;
+                        int Y_height = mid_point.y;
+
+                        cout<<"X"<<src_img.cols/2<<"  "<<"Y"<<src_img.rows/2<<endl;
+                        if(serialisopen == 1)
                         {
-                            Recoginition_FLAG = 1;
+                            sendData(X_Widht,Y_height);
                         }
-                        SuccessSend = true;
-                        cout<<"X"<<src_img.cols/2<<"  "<<"Y"<<src_img.rows/2<<endl;                        
+                        //DEBUG
                         t2 = getTickCount();
                         RunTime = (t2-t1)/getTickFrequency();
                         FPS = 1 / RunTime;
-                        //cout<<"time:"<<RunTime<<endl;
-                        cout<<"FPS:"<<FPS<<endl;
+                        cout<<"time:"<<RunTime<<endl<<"FPS:"<<FPS<<endl;
                         break;
                     }
                 }
             }
-            if(serialisopen == 1)
-            {
-                switch (Recoginition_FLAG)
-                {
-                 case 0:
-                {
-                    if(SuccessSend == true)
-                    {
-                        if(SendBuf_COUNT < 3)
-                        {
-                            SendBuf_COUNT += 1;
-                            sendData(X_Widht,Y_height,0);
-                            cout<<"send buf_temp"<<endl;
-                        }
-                        else
-                        {
-                            int leftorright = missingflag(src_img,X_Widht);
-                            switch(leftorright)
-                            {
-                            case 1:
-                            {
-                                sendData(X_Widht,Y_height,1);
-                                cout<<"send None"<<endl;
-                            }
-                                break;
-                            case 2:
-                            {
-                                sendData(X_Widht,Y_height,2);
-                                cout<<"send None"<<endl<<"missing left"<<endl;
-                            }
-                                break;
-                            case 3:
-                            {
-                                sendData(X_Widht,Y_height,3);
-                                cout<<"send None"<<endl<<"missing right"<<endl;
-                            }
-                                break;
-                            default:
-                                break;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        sendData(X_Widht,Y_height,1);
-                        cout<<"send None"<<endl;
-                    }
-                }
-                    break;
-                case 1:
-                {
-                    SendBuf_COUNT = 0;
-                    int X = src_img.cols/2;
-                    int Y = src_img.rows/2;
-                    sendData(X,Y,0);
-                    cout<<"send center"<<endl;
-                }
-                    break;
-                case 2:
-                {
-                    SendBuf_COUNT = 0;
-                    sendData(X_Widht,Y_height,0);
-                    cout<<"send success"<<endl;
-                }
-                    break;
-                default:
-                    break;
-                }
-            }
-            imshow("th",bin_img);
-            imshow("input" ,src_img);
+           // imshow("th",bin_img);
+           // imshow("input" ,src_img);
             imshow("output",dst_img);
             int key = waitKey(1);
             if(char(key) == 27)
             {
-                CameraReleaseImageBuffer(camera.hCamera,camera.pbyBuffer);
+                CameraReleaseImageBuffer(hCamera,pbyBuffer);
                 break;
             }
             //在成功调用CameraGetImageBuffer后，必须调用CameraReleaseImageBuffer来释放获得的buffer。
             //否则再次调用CameraGetImageBuffer时，程序将被挂起一直阻塞，直到其他线程中调用CameraReleaseImageBuffer来释放了buffer
-            CameraReleaseImageBuffer(camera.hCamera,camera.pbyBuffer);
+            CameraReleaseImageBuffer(hCamera,pbyBuffer);
         }
     }
-    CameraUnInit(camera.hCamera);
+    CameraUnInit(hCamera);
     //注意，现反初始化后再free
-    free(camera.g_pRgbBuffer);
+    free(g_pRgbBuffer);
     return 0;
 }
