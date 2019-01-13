@@ -91,7 +91,7 @@ int main()
                         boundRect.push_back(B_rect_i);
                         rotateRect.push_back(R_rect_i);
                     }
-                }                
+                }
             }
             float distance_max = 0.f;
             float slope_min = 10.0;
@@ -231,7 +231,7 @@ int main()
                             Recoginition_FLAG = 1;
                         }
                         SuccessSend = true;
-                        cout<<"X"<<src_img.cols/2<<"  "<<"Y"<<src_img.rows/2<<endl;                        
+                        cout<<"X"<<src_img.cols/2<<"  "<<"Y"<<src_img.rows/2<<endl;
                         t2 = getTickCount();
                         RunTime = (t2-t1)/getTickFrequency();
                         FPS = 1 / RunTime;
