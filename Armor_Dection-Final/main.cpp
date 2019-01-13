@@ -5,20 +5,9 @@
 #include "matchandgroup.h"
 #include "databuff.h"
 
-using namespace cv;
-using namespace std;
-
-int threshold_Value;
-int t1, t2, t3, FPS;
-float RunTime;     //用于测试帧率
-Mat src_img;    //原图
-Mat gray_img;   //灰度图
-Mat bin_img;    //二值图
-Mat dst_img;    //输出图
-
 int main()
 {
-    cameraconfigure camera;
+    CameraConfigure camera;
     /*----------调用相机----------*/
     camera.CameraSet();
     /*----------调用相机----------*/
@@ -31,6 +20,14 @@ int main()
     /*----------串口部分----------*/
 
     /*----------参数初始化----------*/
+    int threshold_Value;
+    int t1,t2,FPS;
+    float RunTime;     //用于测试帧率
+    int none_count = 0;
+    Mat src_img;    //原图
+    Mat gray_img;   //灰度图
+    Mat bin_img;    //二值图
+    Mat dst_img;    //输出图
     if(armor_color == 0)
     {
         threshold_Value = 20;
@@ -201,7 +198,7 @@ int main()
                     }
                 }
             }
-            bool SuccessSend = false;
+            bool SuccessSend;
             int Recoginition_FLAG = 0;    //ifRecoginitionSuccess
             int X_Widht;
             int Y_height;
@@ -235,7 +232,7 @@ int main()
                         t2 = getTickCount();
                         RunTime = (t2-t1)/getTickFrequency();
                         FPS = 1 / RunTime;
-                        //cout<<"time:"<<RunTime<<endl;
+                        cout<<"time:"<<RunTime<<endl;
                         cout<<"FPS:"<<FPS<<endl;
                         break;
                     }
@@ -261,21 +258,51 @@ int main()
                             switch(leftorright)
                             {
                             case 1:
-                            {
-                                sendData(X_Widht,Y_height,1);
-                                cout<<"send None"<<endl;
+                            {                                
+                                if(none_count < 20)
+                                {
+                                    sendData(X_Widht,Y_height,1);
+                                    cout<<"send None"<<endl;
+                                    none_count += 1;
+                                }
+                                else
+                                {
+                                    none_count = 0;
+                                    SuccessSend = false;
+                                    break;
+                                }
                             }
                                 break;
                             case 2:
                             {
-                                sendData(X_Widht,Y_height,2);
-                                cout<<"send None"<<endl<<"missing left"<<endl;
+                                if(none_count < 20)
+                                {
+                                    sendData(X_Widht,Y_height,2);
+                                    cout<<"send None"<<endl<<"missing left"<<endl;
+                                    none_count += 1;
+                                }
+                                else
+                                {
+                                    none_count = 0;
+                                    SuccessSend = false;
+                                    break;
+                                }
                             }
                                 break;
                             case 3:
                             {
-                                sendData(X_Widht,Y_height,3);
-                                cout<<"send None"<<endl<<"missing right"<<endl;
+                                if(none_count < 20)
+                                {
+                                    sendData(X_Widht,Y_height,3);
+                                    cout<<"send None"<<endl<<"missing right"<<endl;
+                                    none_count += 1;
+                                }
+                                else
+                                {
+                                    none_count = 0;
+                                    SuccessSend = false;
+                                    break;
+                                }
                             }
                                 break;
                             default:
@@ -303,7 +330,7 @@ int main()
                 {
                     SendBuf_COUNT = 0;
                     sendData(X_Widht,Y_height,0);
-                    cout<<"send success"<<endl;
+                    cout<<"send success"<<endl;                    
                 }
                     break;
                 default:
