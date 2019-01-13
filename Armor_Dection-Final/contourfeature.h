@@ -12,9 +12,9 @@ bool Test_Armored_Color(Mat color_roi)
     double H=0.0,S=0.0,V=0.0;
     int x,y;
     int flag = 0;
-    for(x = color_roi.cols/4;x < color_roi.cols/4+color_roi.cols/2; ++x)
+    for(x = 0;x < color_roi.cols; ++x)
     {
-        for(y = color_roi.rows/4;y < color_roi.rows/4+color_roi.rows/2; ++y)
+        for(y = 0;y < color_roi.rows; ++y)
         {
             H = hsv_roi.at<Vec3b>(y,x)[0];
             S = hsv_roi.at<Vec3b>(y,x)[1];
@@ -33,7 +33,7 @@ bool Test_Armored_Color(Mat color_roi)
             }
             else
             {   //blue
-                if(H>=75 && H<=155)
+                if(H>=75 && H<=120)
                 {   if(S >= 195 && S <= 255)
                     {   if(V >= 185 && V <= 255)
                         {
