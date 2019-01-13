@@ -43,7 +43,7 @@ void cameraconfigure::CameraSet()
         }
         else
         {
-            CameraSetExposureTime(hCamera,150);
+            CameraSetExposureTime(hCamera,350);
         }
         /*让SDK进入工作模式，开始接收来自相机发送的图像数据。
          *如果当前相机是触发模式，则需要接收到触发帧以后才会更新图像*/

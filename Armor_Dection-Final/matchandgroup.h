@@ -56,13 +56,13 @@ bool Rect_different(const RotatedRect &r1, const RotatedRect &r2)
             if(h>w)
             {
                 float ratio = h/max(h1,h2);
-                if(ratio < 0.35)
+                if(ratio < 0.3005)
                     is = 1;
             }
             else
             {
                 float ratio = w/max(w1,w2);
-                if(ratio < 0.35)
+                if(ratio < 0.3005)
                     is = 1;
             }
         }
@@ -146,7 +146,7 @@ bool Distance_Height(RotatedRect R_rect_1, RotatedRect R_rect_2)
     {
         h = h2;
     }
-    if((distence > h && distence < h*8.011))
+    if((distence > h && distence < h*8))
     {
         is = 1;
     }

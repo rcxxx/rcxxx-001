@@ -4,7 +4,7 @@
 
 #include "configure.h"
 
-bool Test_Armored_Color(Mat color_roi,const int Armor_Color)
+bool Test_Armored_Color(Mat color_roi)
 {
     Mat hsv_roi;
     cvtColor(color_roi,hsv_roi,COLOR_BGR2HSV);
@@ -12,11 +12,7 @@ bool Test_Armored_Color(Mat color_roi,const int Armor_Color)
     double H=0.0,S=0.0,V=0.0;
     int x,y;
     int flag = 0;
-<<<<<<< HEAD
     for(x = color_roi.cols/4;x < color_roi.cols/4+color_roi.cols/2; ++x)
-=======
-    for(x = 0;x < color_roi.cols; ++x)
->>>>>>> c482c2fd3aba5f5e7b8923883a89e597911d1523
     {
         for(y = color_roi.rows/4;y < color_roi.rows/4+color_roi.rows/2; ++y)
         {
@@ -24,17 +20,11 @@ bool Test_Armored_Color(Mat color_roi,const int Armor_Color)
             S = hsv_roi.at<Vec3b>(y,x)[1];
             V = hsv_roi.at<Vec3b>(y,x)[2];
             //red
-            if(Armor_Color == 0)
+            if(armor_color == 0)
             {
-<<<<<<< HEAD
                 if((H>=145 && H<180)||(H>=0 && H<=13))
                 {   if(S >= 135 && S <= 255)
                     {   if(V > 148 && V <= 255)
-=======
-                if((H>=145 && H<180)||(H>=0 && H<=30))
-                {   if(S >= 150 && S <= 255)
-                    {   if(V > 80 && V <= 255)
->>>>>>> c482c2fd3aba5f5e7b8923883a89e597911d1523
                         {
                             flag += 1;
                         }
@@ -43,25 +33,31 @@ bool Test_Armored_Color(Mat color_roi,const int Armor_Color)
             }
             else
             {   //blue
-<<<<<<< HEAD
-                if(H>=100 && H<=155)
-                {   if(S >= 215 && S <= 255)
-                    {   if(V >= 205 && V <= 255)
-=======
-                if(H>=100 && H<124)
-                {   if(S >= 200-20 && S <= 255)
-                    {   if(V > 200-50 && V <= 255)
->>>>>>> c482c2fd3aba5f5e7b8923883a89e597911d1523
+                if(H>=75 && H<=155)
+                {   if(S >= 195 && S <= 255)
+                    {   if(V >= 185 && V <= 255)
                         {
                             flag += 1;
                         }
                     }
                 }
             }
-            if((flag / color_roi.cols*color_roi.rows) > 0.5)
+
+            if(armor_color == 0)
             {
-                is_color = 1;
-                continue;
+                if((flag / color_roi.cols*color_roi.rows) > 0.5)
+                {
+                    is_color = 1;
+                    continue;
+                }
+            }
+            else
+            {
+                if((flag / color_roi.cols*color_roi.rows) > 0.5)
+                {
+                    is_color = 1;
+                    continue;
+                }
             }
         }
     }
@@ -112,6 +108,41 @@ int Light_State(const RotatedRect &rect)
     }
 }
 
+bool Catch_State(float ratio,int value)
+{
+    bool is;
+    switch (value)
+    {
+    case 1:
+        if (ratio < 0.7)
+            is = true;
+        else
+            is = false;
+        break;
+    case 2:
+        if (ratio < 0.8)
+            is = true;
+        else
+            is = false;
+        break;
+    case 3:
+        if (ratio < 0.9)
+            is = true;
+        else
+            is = false;
+        break;
+    case 4:
+        if (ratio < 1)
+            is = true;
+        else
+            is = false;
+        break;
+    default:
+        break;
+    }
+    return is;
+}
+
 void getROI(Mat src,const RotatedRect &rect, Mat roi)
 {
     Point2f verices[4];
@@ -142,4 +173,5 @@ void getROI(Mat src,const RotatedRect &rect, Mat roi)
     Mat warpMatrix = getPerspectiveTransform(verices,verdst);
     warpPerspective(src,roi,warpMatrix,roi.size(),INTER_LINEAR, BORDER_CONSTANT);
 }
+
 #endif // CONTOURFEATURE_H

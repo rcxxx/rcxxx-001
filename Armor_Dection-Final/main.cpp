@@ -8,7 +8,7 @@
 using namespace cv;
 using namespace std;
 
-int threshold_Value,Armor_olor;
+int threshold_Value;
 int t1, t2, t3, FPS;
 float RunTime;     //用于测试帧率
 Mat src_img;    //原图
@@ -34,12 +34,10 @@ int main()
     if(armor_color == 0)
     {
         threshold_Value = 20;
-        Armor_olor = 0;
     }
     else
     {
-        threshold_Value = 10;
-        Armor_olor = 1;
+        threshold_Value = 40;
     }
     int SendBuf_COUNT = 0;    //ifSendSuccess
     /*----------参数初始化----------*/
@@ -63,7 +61,7 @@ int main()
             //--------------色彩分割	-----------------//
             cvtColor(src_img, gray_img, COLOR_BGR2GRAY);
             threshold(gray_img, bin_img, threshold_Value, 255, THRESH_BINARY);
-            medianBlur(bin_img, bin_img,5);
+            medianBlur(bin_img, bin_img,3);
             Canny(bin_img,bin_img,120,240);
 
             vector<vector<Point>> contours;
@@ -84,44 +82,16 @@ int main()
                 Rect B_rect_i = boundingRect(contours[i]);
                 RotatedRect R_rect_i = minAreaRect(contours[i]);
                 float ratio = (float)B_rect_i.width / (float)B_rect_i.height;
-                bool H_W;
+                bool H_W = false;
                 if(B_rect_i.height >= B_rect_i.width)
                 {
-                    switch (Light_State(R_rect_i))
+                    H_W = Catch_State(ratio,Light_State(R_rect_i));
+                    if (H_W)
                     {
-                    case 1:
-                        if (ratio < 0.7)
-                            H_W = true;
-                        else
-                            H_W = false;
-                        break;
-                    case 2:
-                        if (ratio < 0.8)
-                            H_W = true;
-                        else
-                            H_W = false;
-                        break;
-                    case 3:
-                        if (ratio < 0.9)
-                            H_W = true;
-                        else
-                            H_W = false;
-                        break;
-                    case 4:
-                        if (ratio < 1)
-                            H_W = true;
-                        else
-                            H_W = false;
-                        break;
-                    default:
-                        break;
+                        boundRect.push_back(B_rect_i);
+                        rotateRect.push_back(R_rect_i);
                     }
-                }
-                if (H_W)
-                {
-                    boundRect.push_back(B_rect_i);
-                    rotateRect.push_back(R_rect_i);
-                }
+                }                
             }
             float distance_max = 0.f;
             float slope_min = 10.0;
@@ -198,9 +168,9 @@ int main()
                                 Mat roi_2 = Mat(roi_h2,roi_w2,CV_8UC1);
                                 Mat warpMatrix2 = getPerspectiveTransform(verices_2,verdst_2);
                                 warpPerspective(dst_img,roi_2,warpMatrix2,roi_2.size(),INTER_LINEAR, BORDER_CONSTANT);
-                                if(Test_Armored_Color(roi_1,Armor_olor)==1)
+                                if(Test_Armored_Color(roi_1)==1)
                                 {
-                                    if(Test_Armored_Color(roi_2,Armor_olor)==1)
+                                    if(Test_Armored_Color(roi_2)==1)
                                     {
                                         if(distance_temp >= distance_max)
                                         {
@@ -231,7 +201,8 @@ int main()
                     }
                 }
             }
-            int RecoginitionSuccess_FLAG = 0;    //ifRecoginitionSuccess
+            bool SuccessSend = false;
+            int Recoginition_FLAG = 0;    //ifRecoginitionSuccess
             int X_Widht;
             int Y_height;
 
@@ -253,11 +224,13 @@ int main()
                         //cout<<"x:"<<mid_point.x<<"   y:"<<mid_point.y;
                         X_Widht = mid_point.x;
                         Y_height = mid_point.y;
-                        RecoginitionSuccess_FLAG = 2;
+                        sprintf(buf_temp,"%s%03d%s%03d","S",X_Widht,",",Y_height);
+                        Recoginition_FLAG = 2;
                         if(isCentralBUffer(src_img,mid_point))
                         {
-                            RecoginitionSuccess_FLAG = 1;
+                            Recoginition_FLAG = 1;
                         }
+                        SuccessSend = true;
                         cout<<"X"<<src_img.cols/2<<"  "<<"Y"<<src_img.rows/2<<endl;                        
                         t2 = getTickCount();
                         RunTime = (t2-t1)/getTickFrequency();
@@ -270,42 +243,50 @@ int main()
             }
             if(serialisopen == 1)
             {
-                switch (RecoginitionSuccess_FLAG)
+                switch (Recoginition_FLAG)
                 {
                  case 0:
                 {
-                    if(SendBuf_COUNT < 3)
+                    if(SuccessSend == true)
                     {
-                        SendBuf_COUNT += 1;
-                        sendData(X_Widht,Y_height,0);
-                        cout<<"send buf_temp"<<endl;
+                        if(SendBuf_COUNT < 3)
+                        {
+                            SendBuf_COUNT += 1;
+                            sendData(X_Widht,Y_height,0);
+                            cout<<"send buf_temp"<<endl;
+                        }
+                        else
+                        {
+                            int leftorright = missingflag(src_img,X_Widht);
+                            switch(leftorright)
+                            {
+                            case 1:
+                            {
+                                sendData(X_Widht,Y_height,1);
+                                cout<<"send None"<<endl;
+                            }
+                                break;
+                            case 2:
+                            {
+                                sendData(X_Widht,Y_height,2);
+                                cout<<"send None"<<endl<<"missing left"<<endl;
+                            }
+                                break;
+                            case 3:
+                            {
+                                sendData(X_Widht,Y_height,3);
+                                cout<<"send None"<<endl<<"missing right"<<endl;
+                            }
+                                break;
+                            default:
+                                break;
+                            }
+                        }
                     }
                     else
                     {
-                        int leftorright = missingflag(src_img,X_Widht);
-                        switch(leftorright)
-                        {
-                        case 1:
-                        {
-                            sendData(X_Widht,Y_height,1);
-                            cout<<"send None"<<endl;
-                        }
-                            break;
-                        case 2:
-                        {
-                            sendData(X_Widht,Y_height,2);
-                            cout<<"send None"<<endl<<"missing left"<<endl;
-                        }
-                            break;
-                        case 3:
-                        {
-                            sendData(X_Widht,Y_height,3);
-                            cout<<"send None"<<endl<<"missing right"<<endl;
-                        }
-                            break;
-                        default:
-                            break;
-                        }
+                        sendData(X_Widht,Y_height,1);
+                        cout<<"send None"<<endl;
                     }
                 }
                     break;
@@ -315,7 +296,6 @@ int main()
                     int X = src_img.cols/2;
                     int Y = src_img.rows/2;
                     sendData(X,Y,0);
-                    sprintf(buf_temp,"%s%03d%s%03d","S",X_Widht,",",Y_height);
                     cout<<"send center"<<endl;
                 }
                     break;
@@ -323,7 +303,6 @@ int main()
                 {
                     SendBuf_COUNT = 0;
                     sendData(X_Widht,Y_height,0);
-                    buf_temp = buf;
                     cout<<"send success"<<endl;
                 }
                     break;
